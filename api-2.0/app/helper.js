@@ -5,13 +5,15 @@ const path = require('path');
 const FabricCAServices = require('fabric-ca-client');
 const fs = require('fs');
 
+const invoke = require('./invoke.js');
+
 const util = require('util');
+
 
 const getCCP = async (org) => {
     let ccpPath = null;
     org == 'Org1' ? ccpPath = path.resolve(__dirname, '..', 'config', 'connection-org1.json') : null
     org == 'Org2' ? ccpPath = path.resolve(__dirname, '..', 'config', 'connection-org2.json') : null
-    org == 'Org3' ? ccpPath = path.resolve(__dirname, '..', 'config', 'connection-org3.json') : null
     const ccpJSON = fs.readFileSync(ccpPath, 'utf8')
     const ccp = JSON.parse(ccpJSON);
     return ccp
@@ -21,7 +23,6 @@ const getCaUrl = async (org, ccp) => {
     let caURL = null
     org == 'Org1' ? caURL = ccp.certificateAuthorities['ca.org1.example.com'].url : null
     org == 'Org2' ? caURL = ccp.certificateAuthorities['ca.org2.example.com'].url : null
-    org == 'Org3' ? caURL = ccp.certificateAuthorities['ca.org3.example.com'].url : null
     return caURL
 
 }
@@ -30,7 +31,6 @@ const getWalletPath = async (org) => {
     let walletPath = null
     org == 'Org1' ? walletPath = path.join(process.cwd(), 'org1-wallet') : null
     org == 'Org2' ? walletPath = path.join(process.cwd(), 'org2-wallet') : null
-    org == 'Org3' ? walletPath = path.join(process.cwd(), 'org3-wallet') : null
     return walletPath
 }
 
@@ -41,7 +41,7 @@ const getAffiliation = async (org) => {
     return org == "Org1" ? 'org1.department1' : 'org2.department1'
 }
 
-const getRegisteredUser = async (username, userOrg, isJson) => {
+const getRegisteredUser = async (username, userOrg, permissions, isJson) => {
     let ccp = await getCCP(userOrg)
 
     const caURL = await getCaUrl(userOrg, ccp)
@@ -86,9 +86,13 @@ const getRegisteredUser = async (username, userOrg, isJson) => {
     let secret;
     try {
         // Register the user, enroll the user, and import the new identity into the wallet.
-        secret = await ca.register({ affiliation: await getAffiliation(userOrg), enrollmentID: username, role: 'client' }, adminUser);
-        // const secret = await ca.register({ affiliation: 'org1.department1', enrollmentID: username, role: 'client', attrs: [{ name: 'role', value: 'approver', ecert: true }] }, adminUser);
-
+     
+        if (permissions == "READ-WRITE"){
+        secret = await ca.register({ affiliation: 'org1.department1', enrollmentID: username, role: 'client', attrs: [{ name: 'role', value: 'approver', ecert: true }] }, adminUser);
+        }
+        else{
+        secret = await ca.register({ affiliation: await getAffiliation(userOrg), enrollmentID: username, role: 'client', attrs: [{ name: 'role', value: 'client', ecert: true }] }, adminUser);
+        }
         console.log(`Secret for the user with username: ${username} -------> ${secret}`)
 
     } catch (error) {
@@ -135,7 +139,6 @@ const getCaInfo = async (org, ccp) => {
     let caInfo = null
     org == 'Org1' ? caInfo = ccp.certificateAuthorities['ca.org1.example.com'] : null
     org == 'Org2' ? caInfo = ccp.certificateAuthorities['ca.org2.example.com'] : null
-    org == 'Org3' ? caInfo = ccp.certificateAuthorities['ca.org3.example.com'] : null
     return caInfo
 }
 
@@ -143,7 +146,6 @@ const getOrgMSP = (org) => {
     let orgMSP = null
     org == 'Org1' ? orgMSP = 'Org1MSP' : null
     org == 'Org2' ? orgMSP = 'Org2MSP' : null
-    org == 'Org3' ? orgMSP = 'Org3MSP' : null
     return orgMSP
 
 }
@@ -200,7 +202,7 @@ const enrollAdmin = async (org, ccp) => {
     }
 }
 
-const registerAndGerSecret = async (username, userOrg) => {
+const registerAndGerSecret = async (username, userOrg, name, password, userType, permissions) => {
     let ccp = await getCCP(userOrg)
 
     const caURL = await getCaUrl(userOrg, ccp)
@@ -235,7 +237,13 @@ const registerAndGerSecret = async (username, userOrg) => {
     let secret;
     try {
         // Register the user, enroll the user, and import the new identity into the wallet.
-        secret = await ca.register({ affiliation: await getAffiliation(userOrg), enrollmentID: username, role: 'client' }, adminUser);
+
+        if (permissions == "READ-WRITE"){
+            secret = await ca.register({ affiliation: 'org1.department1', enrollmentID: username, role: 'client', attrs: [{ name: 'role', value: 'approver', ecert: true }] }, adminUser);
+            }
+            else{
+            secret = await ca.register({ affiliation: await getAffiliation(userOrg), enrollmentID: username, role: 'client', attrs: [{ name: 'role', value: 'client', ecert: true }] }, adminUser);
+            }
         // const secret = await ca.register({ affiliation: 'org1.department1', enrollmentID: username, role: 'client', attrs: [{ name: 'role', value: 'approver', ecert: true }] }, adminUser);
         const enrollment = await ca.enroll({
             enrollmentID: username,
@@ -251,6 +259,17 @@ const registerAndGerSecret = async (username, userOrg) => {
             type: 'X.509',
         };
         await wallet.put(username, x509Identity);
+
+        // Add the user to the User struct using invokeTransaction
+        let args = [username, name, password, userType, permissions];
+        let message = await invoke.invokeTransaction('mychannel', 'fabcar', 'CreateUser', args, username, userOrg, null);
+        
+        const response_payload = {
+            result: message,
+            error: null,
+            errorData: null
+        }
+        res.send(response_payload);
     } catch (error) {
         return error.message
     }
@@ -265,7 +284,8 @@ const registerAndGerSecret = async (username, userOrg) => {
 }
 
 exports.getRegisteredUser = getRegisteredUser
-
+exports.getCCP = getCCP
+exports.getWalletPath = getWalletPath
 module.exports = {
     getCCP: getCCP,
     getWalletPath: getWalletPath,

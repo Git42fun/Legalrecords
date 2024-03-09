@@ -20,6 +20,7 @@ const helper = require('./app/helper')
 const invoke = require('./app/invoke')
 const qscc = require('./app/qscc')
 const query = require('./app/query')
+const { log } = require('console');
 
 app.options('*', cors());
 app.use(cors());
@@ -81,9 +82,17 @@ function getErrorMessage(field) {
 app.post('/users', async function (req, res) {
     var username = req.body.username;
     var orgName = req.body.orgName;
+    var name = req.body.name;
+    var password = req.body.password;
+    var userType = req.body.userType;
+    var permissions = req.body.permissions;
     logger.debug('End point : /users');
     logger.debug('User name : ' + username);
     logger.debug('Org name  : ' + orgName);
+    logger.debug('Name   : ' + name);
+    logger.debug('Password: ' + password);
+    logger.debug('User Type: ' + userType);
+    logger.debug('Permissions: ' + permissions);
     if (!username) {
         res.json(getErrorMessage('\'username\''));
         return;
@@ -92,14 +101,34 @@ app.post('/users', async function (req, res) {
         res.json(getErrorMessage('\'orgName\''));
         return;
     }
+    if (!name) {
+        res.json(getErrorMessage('\'name\''));
+        return;
+    }
+    if (!password) {
+        res.json(getErrorMessage('\'password\''));
+        return;
+    }
+    if (!userType) {
+        res.json(getErrorMessage('\'userType\''));
+        return;
+    }
+    if (!permissions) {
+        res.json(getErrorMessage('\'permissions\''));
+        return;
+    }
 
     var token = jwt.sign({
         exp: Math.floor(Date.now() / 1000) + parseInt(constants.jwt_expiretime),
         username: username,
-        orgName: orgName
+        orgName: orgName,
+        name: name,
+        password: password,
+        userType: userType,
+        permissions: permissions
     }, app.get('secret'));
 
-    let response = await helper.getRegisteredUser(username, orgName, true);
+    let response = await helper.getRegisteredUser(username, orgName, permissions, true);
 
     logger.debug('-- returned from registering the username %s for organization %s', username, orgName);
     if (response && typeof response !== 'string') {
@@ -117,9 +146,17 @@ app.post('/users', async function (req, res) {
 app.post('/register', async function (req, res) {
     var username = req.body.username;
     var orgName = req.body.orgName;
+    var name = req.body.name;
+    var password = req.body.password;
+    var userType = req.body.userType;
+    var permissions = req.body.permissions;
     logger.debug('End point : /users');
     logger.debug('User name : ' + username);
     logger.debug('Org name  : ' + orgName);
+    logger.debug('Name   : ' + name);
+    logger.debug('Password: ' + password);
+    logger.debug('User Type: ' + userType);
+    logger.debug('Permissions: ' + permissions);
     if (!username) {
         res.json(getErrorMessage('\'username\''));
         return;
@@ -128,16 +165,36 @@ app.post('/register', async function (req, res) {
         res.json(getErrorMessage('\'orgName\''));
         return;
     }
+    if (!name) {
+        res.json(getErrorMessage('\'name\''));
+        return;
+    }
+    if (!password) {
+        res.json(getErrorMessage('\'password\''));
+        return;
+    }
+    if (!userType) {
+        res.json(getErrorMessage('\'userType\''));
+        return;
+    }
+    if (!permissions) {
+        res.json(getErrorMessage('\'permissions\''));
+        return;
+    }
 
     var token = jwt.sign({
         exp: Math.floor(Date.now() / 1000) + parseInt(constants.jwt_expiretime),
         username: username,
-        orgName: orgName
+        orgName: orgName,
+        name: name,
+        password: password,
+        userType: userType,
+        permissions: permissions
     }, app.get('secret'));
 
     console.log(token)
 
-    let response = await helper.registerAndGerSecret(username, orgName);
+    let response = await helper.registerAndGerSecret(username, orgName, name, password, userType, permissions);
 
     logger.debug('-- returned from registering the username %s for organization %s', username, orgName);
     if (response && typeof response !== 'string') {
@@ -155,9 +212,17 @@ app.post('/register', async function (req, res) {
 app.post('/users/login', async function (req, res) {
     var username = req.body.username;
     var orgName = req.body.orgName;
+    var name = req.body.name;
+    var password = req.body.password;
+    var userType = req.body.userType;
+    var permissions = req.body.permissions;
     logger.debug('End point : /users');
     logger.debug('User name : ' + username);
     logger.debug('Org name  : ' + orgName);
+    logger.debug('Name   : ' + name);
+    logger.debug('Password: ' + password);
+    logger.debug('User Type: ' + userType);
+    logger.debug('Permissions: ' + permissions);
     if (!username) {
         res.json(getErrorMessage('\'username\''));
         return;
@@ -166,11 +231,31 @@ app.post('/users/login', async function (req, res) {
         res.json(getErrorMessage('\'orgName\''));
         return;
     }
+    if (!name) {
+        res.json(getErrorMessage('\'name\''));
+        return;
+    }
+    if (!password) {
+        res.json(getErrorMessage('\'password\''));
+        return;
+    }
+    if (!userType) {
+        res.json(getErrorMessage('\'userType\''));
+        return;
+    }
+    if (!permissions) {
+        res.json(getErrorMessage('\'permissions\''));
+        return;
+    }
 
     var token = jwt.sign({
         exp: Math.floor(Date.now() / 1000) + parseInt(constants.jwt_expiretime),
         username: username,
-        orgName: orgName
+        orgName: orgName,
+        name: name,
+        password: password,
+        userType: userType,
+        permissions: permissions
     }, app.get('secret'));
 
     let isUserRegistered = await helper.isUserRegistered(username, orgName);

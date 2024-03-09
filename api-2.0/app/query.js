@@ -5,9 +5,10 @@ const log4js = require('log4js');
 const logger = log4js.getLogger('BasicNetwork');
 const util = require('util')
 
+// import helper from "./helper.js";
 
-const helper = require('./helper')
-const query = async (channelName, chaincodeName, args, fcn, username, org_name) => {
+const helper = require('./helper.js')
+const query = async (channelName, chaincodeName, args, fcn, username, org_name, permissions) => {
 
     try {
         // load the network configuration
@@ -24,7 +25,7 @@ const query = async (channelName, chaincodeName, args, fcn, username, org_name) 
         let identity = await wallet.get(username);
         if (!identity) {
             console.log(`An identity for the user ${username} does not exist in the wallet, so registering user`);
-            await helper.getRegisteredUser(username, org_name, true)
+            await helper.getRegisteredUser(username, org_name, permissions, true)
             identity = await wallet.get(username);
             console.log('Run the registerUser.js application before retrying');
             return;
@@ -44,18 +45,17 @@ const query = async (channelName, chaincodeName, args, fcn, username, org_name) 
         let result;
 
         switch (fcn) {
-            case "GetDocumentUsingCarContract":
-                console.log("=============")
-                result = await contract.evaluateTransaction('SmartContract:'+fcn, args[0]);
-                break;
-            case "GetHistoryForAsset":
-            case "GetCarById":
+            case "QueryUser":
                 console.log("=============")
                 result = await contract.evaluateTransaction(fcn, args[0]);
+                break;
+            case "QueryAllUsers":
+                console.log("=============")
+                result = await contract.evaluateTransaction(fcn);
                 break;
             case "QueryLegalRecord":
                 console.log("=============")
-                result = await contract.evaluateTransaction(fcn, args[0]);
+                result = await contract.evaluateTransaction(fcn, args[0], args[1]);
                 break;
             case "QueryAllLegalRecords":
                 console.log("=============")

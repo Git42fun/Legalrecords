@@ -1,19 +1,15 @@
-
-# SPDX-License-Identifier: Apache-2.0
-version: '2.1'
+version: "2.1"
 
 volumes:
-  pgdata:
+  data:
   walletstore:
 
 networks:
   test:
 
-
 services:
-
   explorerdb.mynetwork.com:
-    image: ghcr.io/hyperledger-labs/explorer-db:latest
+    image: hyperledger/explorer-db:latest
     container_name: explorerdb.mynetwork.com
     hostname: explorerdb.mynetwork.com
     environment:
@@ -26,12 +22,12 @@ services:
       timeout: 10s
       retries: 5
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - data:/var/lib/postgresql/data
     networks:
       - test
 
   explorer.mynetwork.com:
-    image: ghcr.io/hyperledger-labs/explorer:2.0.0
+    image: hyperledger/explorer:1.1.1
     container_name: explorer.mynetwork.com
     hostname: explorer.mynetwork.com
     environment:
@@ -39,18 +35,20 @@ services:
       - DATABASE_DATABASE=fabricexplorer
       - DATABASE_USERNAME=hppoc
       - DATABASE_PASSWD=password
-      - LOG_LEVEL_APP=info
-      - LOG_LEVEL_DB=info
-      - LOG_LEVEL_CONSOLE=debug
+      - LOG_LEVEL_APP=debug
+      - LOG_LEVEL_DB=debug
+      - LOG_LEVEL_CONSOLE=info
       - LOG_CONSOLE_STDOUT=true
       - DISCOVERY_AS_LOCALHOST=false
-      - PORT=${PORT:-8080}
     volumes:
-      - ./config2.json:/opt/explorer/app/platform/fabric/config.json
+      - ./config.json:/opt/explorer/app/platform/fabric/config.json
       - ./connection-profile:/opt/explorer/app/platform/fabric/connection-profile
+      - ./examples/net1/crypto:/tmp/crypto
+      - walletstore:/opt/wallet
       - ./crypto-config/:/etc/data
+    command: sh -c "node /opt/explorer/main.js && tail -f /dev/null"
     ports:
-      - 8081:8080
+      - 8080:8080
     depends_on:
       explorerdb.mynetwork.com:
         condition: service_healthy
